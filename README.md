@@ -1,7 +1,7 @@
 # Forti-DFIR - IONSec Fortinet Log Parser Tool
 
 ## Overview
-**IONSec Forti-DFIR Log Parser Tool** is a command-line utility designed for analyzing VPN and firewall logs. It extracts key data and exports it to CSV format, streamlining security investigations for incident responders.
+**IONSec Forti-DFIR Log Parser Tool** is a command-line utility designed for analyzing Fortinet VPN and firewall logs. It extracts key data and exports it to CSV format, streamlining security investigations for incident responders.
 
 Developed by the **IONSec Research Team**.
 
