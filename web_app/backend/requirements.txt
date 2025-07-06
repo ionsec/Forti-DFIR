@@ -1,0 +1,10 @@
+Flask==3.0.0
+Flask-CORS==4.0.0
+pandas==2.1.4
+gunicorn==21.2.0
+python-dotenv==1.0.0
+werkzeug==3.0.1
+flask-limiter==3.5.0
+redis==5.0.1
+celery==5.3.4
+flask-jwt-extended==4.6.0

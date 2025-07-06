@@ -1,0 +1,30 @@
+[build]
+  # Directory to change to before starting a build
+  base = "web_app/"
+  
+  # Directory that contains the deploy-ready HTML files
+  publish = "frontend/build/"
+  
+  # Build command
+  command = "cd frontend && npm install && npm run build"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+# Redirects for SPA
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Headers for security
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "no-referrer-when-downgrade"
+
+# Note: Backend API needs to be deployed separately (e.g., on Heroku, Railway, or Render)
+# Update the frontend API URL to point to your deployed backend
