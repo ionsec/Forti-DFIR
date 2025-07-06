@@ -1,7 +1,7 @@
 # Forti-DFIR - IONSec Fortinet Log Parser Tool
 
 ## Overview
-**IONSec Forti-DFIR Log Parser Tool** is a command-line utility designed for analyzing Fortinet VPN and firewall logs. It extracts key data and exports it to CSV format, streamlining security investigations for incident responders.
+**IONSec Forti-DFIR Log Parser Tool** is a comprehensive solution for analyzing Fortinet VPN and firewall logs. Available as both a command-line utility and a modern web application, it extracts key data and exports it to CSV format, streamlining security investigations for incident responders.
 
 Developed by the **IONSec Research Team**.
 
@@ -12,30 +12,90 @@ Developed by the **IONSec Research Team**.
 - 📊 **Firewall Log Aggregation**: Summarizes traffic by destination IP, filtering out private/local addresses.
 - 📌 **VPN Session Shutdown Analyzer**: Extracts session termination statistics, including sent bytes, for a specific user.
 - 💻 **Interactive CLI Interface**: Guides users through log selection and parsing options.
+- 🌐 **Web Application**: Modern web interface with authentication, file upload, and real-time processing.
 - 📂 **CSV Export**: Saves parsed data for easy analysis.
+- 🐳 **Docker Support**: Easy deployment with Docker Compose.
+- ☁️ **Cloud Ready**: Automatic deployment to Netlify and Vercel.
 - ❓ **Help Function (`-help`)**: Displays usage instructions.
 
 ---
 
+## Quick Start
+
+### Option 1: Web Application (Recommended)
+```bash
+cd web_app
+./run.sh  # For macOS/Linux
+# OR
+run.bat   # For Windows
+```
+Access the application at http://localhost:3000
+
+### Option 2: Command Line Interface
+```bash
+python log_parser.py
+```
+
+---
+
 ## Installation
-### Prerequisites
+
+### Prerequisites for CLI
 - Python **3.6+**
 - `pandas` library
 
-### Steps
+### Prerequisites for Web App
+- Python **3.6+** OR Docker
+- Node.js **14+** (if not using Docker)
+
+### Installation Steps
+
 1. Clone the repository:
    ```sh
    git clone https://github.com/ionsec/Forti-DFIR.git
    cd Forti-DFIR
    ```
-2. Install dependencies:
+
+2. **For CLI usage:**
    ```sh
    pip install pandas
    ```
 
+3. **For Web App usage:**
+   - **Option A - Using Docker (Recommended):**
+     ```sh
+     cd web_app
+     docker-compose up
+     ```
+   
+   - **Option B - Manual Installation:**
+     ```sh
+     cd web_app
+     ./run.sh  # Automated setup for macOS/Linux
+     # OR
+     run.bat   # Automated setup for Windows
+     ```
+
 ---
 
-## Usage
+## Web Application
+
+The web application provides a modern interface for all parsing operations:
+
+- **Access**: http://localhost:3000 (frontend) / http://localhost:5000 (API)
+- **Default Login**: admin / admin123
+- **Features**: All CLI functionality plus:
+  - User authentication
+  - Drag-and-drop file upload
+  - Real-time processing status
+  - Download results as CSV
+  - Parse history tracking
+
+For detailed web app documentation, see [web_app/README.md](web_app/README.md)
+
+---
+
+## CLI Usage
 Run the script in interactive mode:
 ```sh
 python log_parser.py
@@ -120,6 +180,20 @@ The tool generates a structured CSV file with parsed log data.
 |------------|---------|-------------|------------|-----------------|
 | 2020-02-14 | 05:59:52 | USER1 | 600590000  | 600.59          |
 | 2020-02-15 | 07:30:10 | USER1 | 100370000  | 100.37          |
+
+---
+
+## Deployment
+
+The web application can be deployed to cloud platforms:
+
+### Deploy to Netlify
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/ionsec/Forti-DFIR)
+
+### Deploy to Vercel
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/ionsec/Forti-DFIR)
+
+See [web_app/DEPLOYMENT.md](web_app/DEPLOYMENT.md) for detailed deployment instructions.
 
 ---
 
