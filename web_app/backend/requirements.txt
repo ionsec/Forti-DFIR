@@ -8,18 +8,13 @@ werkzeug==3.0.3
 
 # Authentication and security
 flask-limiter==3.7.0
-flask-jwt-extended==4.6.1
+flask-jwt-extended==4.7.1
 flask-talisman==1.1.0
 cryptography==42.0.8
 
 # Async processing
 redis==5.0.5
 celery==5.4.0
-
-# Database (optional, for future use)
-# SQLAlchemy==2.0.31
-# Flask-SQLAlchemy==3.1.1
-# Flask-Migrate==4.0.7
 
 # File handling
 python-magic==0.4.27
