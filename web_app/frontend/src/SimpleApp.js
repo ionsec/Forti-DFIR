@@ -1,8 +1,92 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './SimpleApp.css';
 
 // Use environment variable for API URL, fallback to relative URL for Docker/nginx proxy
 const API_URL = process.env.REACT_APP_API_URL || '';
+
+// Security constants
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+const ALLOWED_EXTENSIONS = ['.txt', '.log', '.csv'];
+
+/**
+ * Sanitize filename to prevent path traversal
+ * @param {string} filename - Original filename
+ * @returns {string} - Sanitized filename
+ */
+const sanitizeFilename = (filename) => {
+  if (!filename) return '';
+  // Remove any path components
+  const name = filename.split(/[\\/]/).pop();
+  // Remove dangerous characters
+  return name.replace(/[<>"'`&]/g, '');
+};
+
+/**
+ * Validate file before upload
+ * @param {File} file - File object
+ * @returns {Object} - { valid: boolean, error: string }
+ */
+const validateFile = (file) => {
+  if (!file) {
+    return { valid: false, error: 'No file selected' };
+  }
+
+  // Check file size
+  if (file.size > MAX_FILE_SIZE) {
+    return { valid: false, error: `File size exceeds ${MAX_FILE_SIZE / (1024 * 1024)}MB limit` };
+  }
+
+  // Check file extension
+  const ext = '.' + file.name.split('.').pop().toLowerCase();
+  if (!ALLOWED_EXTENSIONS.includes(ext)) {
+    return { valid: false, error: `File type ${ext} not allowed. Allowed: ${ALLOWED_EXTENSIONS.join(', ')}` };
+  }
+
+  return { valid: true, error: null };
+};
+
+/**
+ * Secure token storage using sessionStorage (cleared on tab close)
+ * Note: For production, consider using httpOnly cookies instead
+ */
+const tokenStorage = {
+  get: () => {
+    try {
+      return sessionStorage.getItem('token');
+    } catch {
+      return null;
+    }
+  },
+  set: (token) => {
+    try {
+      sessionStorage.setItem('token', token);
+    } catch {
+      console.error('Failed to store token');
+    }
+  },
+  remove: () => {
+    try {
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('username');
+    } catch {
+      console.error('Failed to remove token');
+    }
+  },
+  getUser: () => {
+    try {
+      return sessionStorage.getItem('username');
+    } catch {
+      return null;
+    }
+  },
+  setUser: (username) => {
+    try {
+      sessionStorage.setItem('username', username);
+    } catch {
+      console.error('Failed to store username');
+    }
+  }
+};
 
 function SimpleApp() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -14,46 +98,135 @@ function SimpleApp() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);
   const [error, setError] = useState('');
+  const [validationError, setValidationError] = useState('');
 
+  // Check for existing session on mount
+  useEffect(() => {
+    const token = tokenStorage.get();
+    const storedUser = tokenStorage.getUser();
+    if (token && storedUser) {
+      // Verify token is still valid
+      verifyToken(token).then(valid => {
+        if (valid) {
+          setIsLoggedIn(true);
+        } else {
+          tokenStorage.remove();
+        }
+      });
+    }
+  }, []);
+
+  /**
+   * Verify JWT token validity
+   */
+  const verifyToken = async (token) => {
+    try {
+      const response = await fetch(`${API_URL}/api/auth/verify`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  };
+
+  /**
+   * Handle user login
+   */
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
-    
+    setValidationError('');
+
+    // Input validation
+    if (!username.trim()) {
+      setValidationError('Username is required');
+      return;
+    }
+    if (!password) {
+      setValidationError('Password is required');
+      return;
+    }
+
+    // Sanitize username
+    const cleanUsername = username.trim().slice(0, 64);
+
     try {
       const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ 
+          username: cleanUsername, 
+          password 
+        })
       });
       
       const data = await response.json();
       
       if (response.ok) {
+        tokenStorage.set(data.access_token);
+        tokenStorage.setUser(data.username);
         setIsLoggedIn(true);
-        localStorage.setItem('token', data.access_token);
+        setPassword(''); // Clear password from memory
       } else {
-        setError(data.error || 'Login failed');
+        // Sanitize error message
+        const errorMsg = data.error || 'Login failed';
+        setError(errorMsg.slice(0, 200)); // Limit error message length
       }
     } catch (err) {
       setError('Connection error - make sure backend is running');
     }
   };
 
+  /**
+   * Handle file selection
+   */
   const handleFileChange = (e) => {
-    setSelectedFile(e.target.files[0]);
+    const file = e.target.files[0];
+    setSelectedFile(null);
     setResults(null);
     setError('');
-  };
+    setValidationError('');
 
-  const handleParse = async () => {
-    if (!selectedFile) {
-      setError('Please select a file');
+    if (!file) return;
+
+    const validation = validateFile(file);
+    if (!validation.valid) {
+      setValidationError(validation.error);
       return;
     }
 
-    if (selectedParser === 'vpn-shutdown' && !usernameFilter) {
-      setError('Please enter a username for VPN shutdown parser');
+    setSelectedFile(file);
+  };
+
+  /**
+   * Handle parse operation
+   */
+  const handleParse = async () => {
+    setValidationError('');
+    
+    if (!selectedFile) {
+      setValidationError('Please select a file');
       return;
+    }
+
+    if (selectedParser === 'vpn-shutdown') {
+      if (!usernameFilter.trim()) {
+        setValidationError('Please enter a username for VPN shutdown parser');
+        return;
+      }
+      // Sanitize username filter
+      const cleanFilter = usernameFilter.trim().slice(0, 64);
+      if (!/^[a-zA-Z0-9_.-]+$/.test(cleanFilter)) {
+        setValidationError('Username contains invalid characters');
+        return;
+      }
     }
 
     setLoading(true);
@@ -63,14 +236,16 @@ function SimpleApp() {
     const formData = new FormData();
     formData.append('file', selectedFile);
     if (selectedParser === 'vpn-shutdown') {
-      formData.append('username', usernameFilter);
+      formData.append('username', usernameFilter.trim().slice(0, 64));
     }
 
+    const token = tokenStorage.get();
+    
     try {
       const response = await fetch(`${API_URL}/api/parse/${selectedParser}`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         },
         body: formData
       });
@@ -80,7 +255,8 @@ function SimpleApp() {
       if (response.ok) {
         setResults(data);
       } else {
-        setError(data.error || 'Parsing failed');
+        const errorMsg = data.error || 'Parsing failed';
+        setError(errorMsg.slice(0, 500)); // Limit error message length
       }
     } catch (err) {
       setError('Connection error - make sure backend is running');
@@ -89,13 +265,18 @@ function SimpleApp() {
     }
   };
 
+  /**
+   * Handle file download
+   */
   const handleDownload = async () => {
     if (!results || !results.filename) return;
 
+    const token = tokenStorage.get();
+
     try {
-      const response = await fetch(`${API_URL}/api/download/${results.filename}`, {
+      const response = await fetch(`${API_URL}/api/download/${encodeURIComponent(results.filename)}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         }
       });
 
@@ -104,7 +285,7 @@ function SimpleApp() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = results.filename;
+        a.download = sanitizeFilename(results.filename);
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -117,7 +298,11 @@ function SimpleApp() {
     }
   };
 
-  const resetApp = () => {
+  /**
+   * Handle logout
+   */
+  const handleLogout = useCallback(() => {
+    tokenStorage.remove();
     setIsLoggedIn(false);
     setUsername('');
     setPassword('');
@@ -125,8 +310,7 @@ function SimpleApp() {
     setResults(null);
     setError('');
     setUsernameFilter('');
-    localStorage.removeItem('token');
-  };
+  }, []);
 
   if (!isLoggedIn) {
     return (
@@ -143,8 +327,9 @@ function SimpleApp() {
               type="text"
               placeholder="Username"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(e) => setUsername(e.target.value.slice(0, 64))}
               required
+              autoComplete="username"
             />
             <input
               type="password"
@@ -152,11 +337,16 @@ function SimpleApp() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              autoComplete="current-password"
             />
             <button type="submit">Sign In</button>
           </form>
+          {validationError && <div className="validation-error">{validationError}</div>}
           {error && <div className="error">{error}</div>}
-          <p className="hint">Default credentials: admin / admin123</p>
+          <p className="hint">
+            <strong>Security Notice:</strong> Use strong credentials in production.
+            <br />Default: admin / admin123 (change immediately!)
+          </p>
         </div>
       </div>
     );
@@ -169,8 +359,17 @@ function SimpleApp() {
           <h1>🛡️ Forti-DFIR Log Parser</h1>
           <p className="subtitle">Professional log analysis for DFIR investigations • CSV & Fortinet Format Support</p>
         </div>
-        <button onClick={resetApp} className="logout-btn">Logout</button>
+        <div className="header-right">
+          <span className="user-info">👤 {tokenStorage.getUser()}</span>
+          <button onClick={handleLogout} className="logout-btn">Logout</button>
+        </div>
       </div>
+
+      {validationError && (
+        <div className="validation-banner" onClick={() => setValidationError('')}>
+          ⚠️ {validationError}
+        </div>
+      )}
 
       <div className="parser-box">
         <h2>🔍 Select Parser Type</h2>
@@ -229,7 +428,8 @@ function SimpleApp() {
               type="text"
               placeholder="Enter username to filter (e.g., john.doe)"
               value={usernameFilter}
-              onChange={(e) => setUsernameFilter(e.target.value)}
+              onChange={(e) => setUsernameFilter(e.target.value.replace(/[^a-zA-Z0-9_.-]/g, '').slice(0, 64))}
+              maxLength={64}
             />
             <small>Case-insensitive search for specific user sessions</small>
           </div>
@@ -246,7 +446,7 @@ function SimpleApp() {
             />
             <div className="file-upload-text">
               {selectedFile ? (
-                <span>✅ {selectedFile.name}</span>
+                <span>✅ {sanitizeFilename(selectedFile.name)} ({(selectedFile.size / (1024 * 1024)).toFixed(2)} MB)</span>
               ) : (
                 <span>Choose a log file (.txt, .log, .csv)</span>
               )}
@@ -254,6 +454,7 @@ function SimpleApp() {
           </div>
           <small style={{color: '#b0bec5', fontSize: '0.85rem', marginTop: '8px', display: 'block'}}>
             📋 <strong>Supports:</strong> Fortinet log format (key=value) and CSV format with headers
+            <br />⚠️ Maximum file size: {MAX_FILE_SIZE / (1024 * 1024)} MB
           </small>
         </div>
 
@@ -272,18 +473,18 @@ function SimpleApp() {
             <h3>📊 Parse Results</h3>
             <div className="stats">
               <div className="stat-item">
-                <span className="stat-number">{results.records}</span>
+                <span className="stat-number">{results.records?.toLocaleString() || 0}</span>
                 <span className="stat-label">Records Found</span>
               </div>
               {results.total_mb && (
                 <div className="stat-item">
-                  <span className="stat-number">{results.total_mb.toFixed(2)} MB</span>
+                  <span className="stat-number">{results.total_mb?.toFixed(2) || '0.00'} MB</span>
                   <span className="stat-label">Total Data</span>
                 </div>
               )}
               {results.format_detected && (
                 <div className="stat-item">
-                  <span className="stat-number">{results.format_detected.toUpperCase()}</span>
+                  <span className="stat-number">{results.format_detected?.toUpperCase() || 'UNKNOWN'}</span>
                   <span className="stat-label">Format Detected</span>
                 </div>
               )}
@@ -293,14 +494,14 @@ function SimpleApp() {
               <button onClick={handleDownload} className="download-button">
                 💾 Download CSV
               </button>
-              <button onClick={() => setResults(null)} className="clear-button">
+              <button onClick={() => { setResults(null); setSelectedFile(null); }} className="clear-button">
                 🗑️ Clear Results
               </button>
             </div>
 
             {results.preview && results.preview.length > 0 && (
               <div className="preview">
-                <h4>👀 Preview (first 10 records)</h4>
+                <h4>👀 Preview (first {Math.min(10, results.preview.length)} records)</h4>
                 <div className="table-wrapper">
                   <table>
                     <thead>
@@ -311,10 +512,10 @@ function SimpleApp() {
                       </tr>
                     </thead>
                     <tbody>
-                      {results.preview.map((row, idx) => (
+                      {results.preview.slice(0, 10).map((row, idx) => (
                         <tr key={idx}>
                           {Object.values(row).map((val, i) => (
-                            <td key={i} title={val}>{val}</td>
+                            <td key={i} title={String(val)}>{String(val).slice(0, 50)}</td>
                           ))}
                         </tr>
                       ))}
@@ -323,17 +524,24 @@ function SimpleApp() {
                 </div>
                 {results.records > 10 && (
                   <p className="preview-note">
-                    Showing 10 of {results.records} records. Download CSV for complete data.
+                    Showing 10 of {results.records.toLocaleString()} records. Download CSV for complete data.
                   </p>
                 )}
               </div>
+            )}
+
+            {results.message && (
+              <p className="result-message">{results.message}</p>
             )}
           </div>
         )}
       </div>
 
       <footer className="footer">
-        <p>🔬 Developed by IONSec Research Team | Forti-DFIR v1.0 | Multi-Format Support</p>
+        <p>🔬 Developed by IONSec Research Team | Forti-DFIR v1.0.0 | Multi-Format Support</p>
+        <p className="security-notice">
+          🔒 For security: Always use HTTPS in production. Change default credentials.
+        </p>
       </footer>
     </div>
   );

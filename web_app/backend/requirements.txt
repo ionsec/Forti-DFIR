@@ -1,10 +1,28 @@
-Flask==3.0.0
-Flask-CORS==4.0.0
-pandas==2.1.4
-gunicorn==21.2.0
-python-dotenv==1.0.0
-werkzeug==3.0.1
-flask-limiter==3.5.0
-redis==5.0.1
-celery==5.3.4
-flask-jwt-extended==4.6.0
+# Core dependencies
+Flask==3.0.3
+Flask-CORS==4.0.1
+pandas==2.2.2
+gunicorn==22.0.0
+python-dotenv==1.0.1
+werkzeug==3.0.3
+
+# Authentication and security
+flask-limiter==3.7.0
+flask-jwt-extended==4.6.1
+flask-talisman==1.1.0
+cryptography==42.0.8
+
+# Async processing
+redis==5.0.5
+celery==5.4.0
+
+# Database (optional, for future use)
+# SQLAlchemy==2.0.31
+# Flask-SQLAlchemy==3.1.1
+# Flask-Migrate==4.0.7
+
+# File handling
+python-magic==0.4.27
+
+# Type hints support
+typing-extensions==4.12.2
