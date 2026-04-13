@@ -26,10 +26,3 @@ python:
   install:
     - requirements: web_app/backend/requirements.txt
     - requirements: web_app/backend/requirements-dev.txt
-
-# Optionally set the version of Python and requirements required to build your docs
-# This is needed for auto-generating API docs
-build:
-  os: ubuntu-22.04
-  tools:
-    python: "3.11"
