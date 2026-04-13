@@ -10,7 +10,7 @@ werkzeug==3.0.3
 flask-limiter==3.7.0
 flask-jwt-extended==4.6.1
 flask-talisman==1.1.0
-cryptography==42.0.8
+cryptography==46.0.6
 
 # Async processing
 redis==5.0.5
