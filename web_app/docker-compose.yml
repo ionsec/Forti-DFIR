@@ -10,7 +10,8 @@ services:
       - ./backend/uploads:/app/uploads
       - ./backend/results:/app/results
     environment:
-      - FLASK_ENV=production
+      - FLASK_ENV=development
+      - CORS_ORIGINS=http://localhost:8080,http://localhost:3000
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
       interval: 30s
@@ -27,8 +28,6 @@ services:
       - "8080:80"
     depends_on:
       - backend
-    environment:
-      - REACT_APP_API_URL=http://localhost:8000
 
 volumes:
   uploads:

@@ -538,7 +538,7 @@ function SimpleApp() {
       </div>
 
       <footer className="footer">
-        <p>🔬 Developed by IONSec Research Team | Forti-DFIR v1.0.0 | Multi-Format Support</p>
+        <p>🔬 Developed by IONSec Research Team | Forti-DFIR v1.0.1 | Multi-Format Support</p>
         <p className="security-notice">
           🔒 For security: Always use HTTPS in production. Change default credentials.
         </p>

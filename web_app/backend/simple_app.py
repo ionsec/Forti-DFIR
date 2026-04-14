@@ -114,7 +114,7 @@ def health_check():
     return jsonify({
         'status': 'healthy',
         'timestamp': datetime.now().isoformat(),
-        'version': '1.0.0',
+        'version': '1.0.1',
         'mode': 'development' if Config.is_development() else 'production'
     })
 

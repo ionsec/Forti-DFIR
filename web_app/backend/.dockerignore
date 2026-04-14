@@ -24,6 +24,9 @@ results/
 *.csv
 *.txt
 *.log
+!requirements.txt
+!requirements-dev.txt
+!requirements-simple.txt
 
 .DS_Store
 .vscode

@@ -1,225 +1,181 @@
 # Forti-DFIR Web Application
 
-A powerful web-based version of the Forti-DFIR log parser tool, built with Flask (backend) and React (frontend).
+Forti-DFIR Web is a browser-based Fortinet log parser built with Flask and React. It supports VPN, firewall, and VPN shutdown parsing for both Fortinet key-value logs and CSV inputs.
+
+## Release 1.0.1
+
+This release focuses on making the local Docker workflow reliable and predictable.
+
+- Fixed backend container startup by aligning the Docker image with the backend Python requirements
+- Fixed the backend build context so `requirements.txt` is included during Docker builds
+- Documented the active local Docker ports and default login flow
+- Kept the Docker stack self-contained for local use through the simplified backend entrypoint
 
 ## Features
 
-- **Modern Web Interface**: Clean, responsive UI built with React and Material-UI
-- **Authentication**: Secure JWT-based authentication system
-- **Asynchronous Processing**: Background job processing with Celery and Redis
-- **Real-time Updates**: Live progress tracking for log parsing operations
-- **File Management**: Drag-and-drop file upload with progress indication
-- **Data Visualization**: Interactive data grids with sorting and filtering
-- **Export Functionality**: Download parsed results as CSV files
-- **Dark Theme**: Modern dark theme for comfortable viewing
+- Web interface for Fortinet log parsing
+- Support for VPN, firewall, and VPN shutdown workflows
+- CSV export for parsed results
+- File upload validation and secure filename handling
+- History and downloadable result artifacts
+- Docker-first local startup path
 
 ## Architecture
 
-### Backend (Flask)
-- RESTful API endpoints
-- JWT authentication
-- Celery for background tasks
-- Redis for task queue and caching
-- Rate limiting for API protection
+### Docker Release Path
 
-### Frontend (React)
-- Material-UI components
-- React Router for navigation
-- Axios for API communication
-- Real-time task status polling
-- Responsive design
+The default Docker release path is optimized for local use:
 
-## Installation
+- `frontend` serves the built React app through nginx
+- nginx proxies `/api` traffic to the backend container
+- `backend/simple_app.py` runs the API used by the Docker stack
+- Uploaded files are stored in `backend/uploads`
+- Parsed CSV output is stored in `backend/results`
 
-### Using Docker (Recommended)
+### Full Backend Path
 
-1. Clone the repository:
+The repository also includes `backend/app.py`, which contains the larger JWT/Celery-oriented application flow for more advanced deployments. The Docker compose files in this directory currently ship the simpler local stack.
+
+## Quick Start
+
+### Docker
+
+Start the main local stack:
+
 ```bash
-cd web_app
+docker compose up --build -d
 ```
 
-2. Create environment file:
+Access:
+
+- Web UI: `http://localhost:8080`
+- Backend health endpoint: `http://localhost:8000/api/health`
+- Default login: `admin / admin123`
+
+Stop the stack:
+
 ```bash
-cp backend/.env.example backend/.env
-# Edit .env with your secure keys
+docker compose down
 ```
 
-3. Build and run with Docker Compose:
+Use the alternate port mapping if `8080` or `8000` is already in use:
+
 ```bash
-docker-compose up --build
+docker compose -f docker-compose-alt.yml up --build -d
 ```
 
-4. Access the application:
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:5000
+Alternate ports:
 
-### Manual Installation
+- Web UI: `http://localhost:3001`
+- Backend health endpoint: `http://localhost:5001/api/health`
 
-#### Backend Setup
+### Manual Run
 
-1. Install Python dependencies:
+Backend:
+
 ```bash
 cd backend
 pip install -r requirements.txt
-```
-
-2. Install and run Redis:
-```bash
-# On macOS
-brew install redis
-brew services start redis
-
-# On Ubuntu
-sudo apt-get install redis-server
-sudo systemctl start redis
-```
-
-3. Set up environment variables:
-```bash
 cp .env.example .env
-# Edit .env file with your configuration
+python simple_app.py
 ```
 
-4. Run the Flask application:
-```bash
-python app.py
-```
+Frontend:
 
-5. In a separate terminal, run Celery worker:
-```bash
-celery -A app.celery worker --loglevel=info
-```
-
-#### Frontend Setup
-
-1. Install Node.js dependencies:
 ```bash
 cd frontend
 npm install
-```
-
-2. Start the development server:
-```bash
 npm start
 ```
 
+If you want the larger production-oriented backend path, use `backend/app.py` and configure Redis, Celery, secrets, and admin credentials before starting it.
+
 ## Usage
 
-1. **Login**: Use default credentials (admin/admin123) or configure your own
-2. **Select Parser Type**: Choose from VPN, Firewall, or VPN Shutdown parser
-3. **Upload Log File**: Drag and drop or click to upload your log file
-4. **View Results**: Interactive data grid with preview
-5. **Export**: Download parsed results as CSV
+1. Sign in with the configured credentials. The Docker release defaults to `admin / admin123`.
+2. Choose `VPN`, `Firewall`, or `VPN Shutdown`.
+3. Upload a `.txt`, `.log`, or `.csv` file.
+4. Review the preview table and record counts.
+5. Download the generated CSV output.
 
-## API Endpoints
+## API Endpoints In Docker Release
 
-- `POST /api/auth/login` - User authentication
-- `GET /api/auth/verify` - Verify JWT token
-- `POST /api/parse/vpn` - Parse VPN logs
-- `POST /api/parse/firewall` - Parse firewall logs
-- `POST /api/parse/vpn-shutdown` - Parse VPN shutdown sessions
-- `GET /api/task/{task_id}` - Check task status
-- `GET /api/download/{filename}` - Download result file
-- `GET /api/history` - Get parsing history
+- `GET /api/health`
+- `POST /api/auth/login`
+- `GET /api/auth/verify`
+- `POST /api/parse/vpn`
+- `POST /api/parse/firewall`
+- `POST /api/parse/vpn-shutdown`
+- `GET /api/download/{filename}`
+- `GET /api/history`
 
-## Security Features
+Additional endpoints such as registration, password changes, and task polling are available in the full `backend/app.py` path rather than the simplified Docker release path.
 
-- JWT-based authentication
-- Rate limiting on API endpoints
-- Secure file upload with validation
-- CORS protection
-- Input sanitization
-- Secure password hashing
+## Configuration Notes
 
-## Configuration
+### Local Docker Defaults
 
-### Backend Configuration (.env)
+- `docker-compose.yml` exposes `8080 -> frontend` and `8000 -> backend`
+- `docker-compose-alt.yml` exposes `3001 -> frontend` and `5001 -> backend`
+- The local compose files run with `FLASK_ENV=development`
+- The backend image installs from `backend/requirements.txt`
+
+### Production Deployment
+
+Before using the full backend in production:
+
+- Set `SECRET_KEY`
+- Set `JWT_SECRET_KEY`
+- Set `ADMIN_USER`
+- Set `ADMIN_PASSWORD`
+- Configure Redis and Celery broker URLs
+- Run behind HTTPS
+- Restrict `CORS_ORIGINS`
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for deployment notes.
+
+## Troubleshooting
+
+1. Rebuild after backend dependency changes:
+
+```bash
+docker compose up --build -d
 ```
-SECRET_KEY=your-secret-key-here
-JWT_SECRET_KEY=your-jwt-secret-key
-REDIS_URL=redis://localhost:6379/0
-FLASK_ENV=development
+
+2. Check container status:
+
+```bash
+docker compose ps
 ```
 
-### Frontend Configuration
-- API URL configuration in package.json proxy
-- Environment-specific builds supported
+3. Review logs:
+
+```bash
+docker compose logs --tail=200 backend frontend
+```
+
+4. Verify the backend directly:
+
+```bash
+curl http://localhost:8000/api/health
+```
 
 ## Development
 
-### Running Tests
+Run backend tests:
+
 ```bash
-# Backend tests
 cd backend
 python -m pytest
+```
 
-# Frontend tests
+Run frontend tests:
+
+```bash
 cd frontend
 npm test
 ```
 
-### Code Structure
-```
-web_app/
-├── backend/
-│   ├── app.py              # Main Flask application
-│   ├── log_parser_service.py # Core parsing logic
-│   ├── requirements.txt     # Python dependencies
-│   └── Dockerfile
-├── frontend/
-│   ├── src/
-│   │   ├── components/     # Reusable React components
-│   │   ├── pages/         # Page components
-│   │   ├── contexts/      # React contexts
-│   │   └── App.js         # Main React app
-│   ├── package.json
-│   └── Dockerfile
-└── docker-compose.yml
-```
-
-## Production Deployment
-
-1. Update environment variables with secure values
-2. Enable HTTPS with SSL certificates
-3. Configure proper CORS origins
-4. Set up monitoring and logging
-5. Use production-grade database for user management
-6. Configure backup strategies
-
-### Cloud Deployment
-
-The web application can be deployed to various platforms:
-
-- **Frontend**: Netlify, Vercel, GitHub Pages
-- **Backend**: Heroku, Railway, Render, Vercel
-
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions.
-
-#### Quick Deploy to Netlify
-
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/ionsec/Forti-DFIR)
-
-#### Quick Deploy to Vercel
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/ionsec/Forti-DFIR)
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Redis Connection Error**: Ensure Redis is running
-2. **CORS Issues**: Check CORS configuration in app.py
-3. **File Upload Fails**: Check file size limits and permissions
-4. **Authentication Fails**: Verify JWT secret keys match
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
-
 ## License
 
-Developed by IONSec Research Team
+Developed by IONSec Research Team.

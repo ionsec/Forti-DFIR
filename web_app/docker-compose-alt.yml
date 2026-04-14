@@ -10,7 +10,8 @@ services:
       - ./backend/uploads:/app/uploads
       - ./backend/results:/app/results
     environment:
-      - FLASK_ENV=production
+      - FLASK_ENV=development
+      - CORS_ORIGINS=http://localhost:3001,http://localhost:3000
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
       interval: 30s
